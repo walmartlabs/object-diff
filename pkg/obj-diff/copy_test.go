@@ -179,3 +179,34 @@ func TestCopyValueReflectively(t *testing.T) {
 		})
 	}
 }
+
+type aliasType1 int64
+type aliasType2 simpleStruct
+
+func TestTypeAlias(t *testing.T) {
+
+	expect1 := aliasType1(123)
+	actual1, ok := CopyValueReflectively(expect1).(aliasType1)
+	if !ok {
+		t.Fatal("Could not convert basic alias type!")
+	}
+
+	if !reflect.DeepEqual(expect1, actual1) {
+		t.Logf("Expect: %+v", expect1)
+		t.Logf("Actual: %+v", actual1)
+		t.Fail()
+	}
+
+	expect2 := aliasType2{123, 3.14, "ABC", true}
+	actual2, ok := CopyValueReflectively(expect2).(aliasType2)
+	if !ok {
+		t.Fatal("Could not convert object alias type!")
+	}
+
+	if !reflect.DeepEqual(expect2, actual2) {
+		t.Logf("Expect: %+v", expect2)
+		t.Logf("Actual: %+v", actual2)
+		t.Fail()
+	}
+
+}

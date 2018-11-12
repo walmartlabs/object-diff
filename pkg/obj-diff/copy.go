@@ -45,7 +45,7 @@ func CopyReflectValue(oldVal reflect.Value) (newVal reflect.Value) {
 		}
 
 	default:
-		newVal = copyBasic(oldVal)
+		newVal = copyBasic(oldVal).Convert(oldVal.Type())
 	}
 
 	return

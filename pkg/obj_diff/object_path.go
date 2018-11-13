@@ -2,6 +2,7 @@ package obj_diff
 
 import (
 	"fmt"
+	. "github.com/takari/object-diff/pkg/obj_diff/helpers"
 	"reflect"
 )
 
@@ -25,7 +26,7 @@ type ObjectPathConfig struct {
 // follow when traversing root. Finally config contains options and actions
 // that ObjectPath can take for you automatically.
 func NewObjectPathWithConfig(root reflect.Value, path []PathElement, config ObjectPathConfig) *ObjectPath {
-	pathWithPtr := append([]PathElement{{Pointer: true}}, path...)
+	pathWithPtr := append([]PathElement{NewPtrElem()}, path...)
 	return &ObjectPath{Value: root, lastVals: []reflect.Value{}, index: -1, Path: pathWithPtr, config: config}
 }
 
@@ -76,7 +77,7 @@ func (op ObjectPath) nextConfigOptions() {
 		if op.config.CreateMissingObjects {
 			op.CreateIfMissing()
 		}
-		if op.config.CreateMissingValues && !op.GetMapValue().IsValid(){
+		if op.config.CreateMissingValues && !op.GetMapValue().IsValid() {
 			op.SetMapValueToNew(op.Type().Elem())
 		}
 	case reflect.Array:
@@ -108,19 +109,19 @@ func (op ObjectPath) LastVal() reflect.Value {
 // Retrieve the next from a Struct type. Panics if the
 // current object is not a Struct.
 func (op *ObjectPath) GetField() reflect.Value {
-	return op.Field(op.PathElem().Index)
+	return op.Field(op.PathElem().GetIndex())
 }
 
 // Retrieves the next index. Panics if the current object
 // is not an Array or Slice.
 func (op *ObjectPath) GetIndex() reflect.Value {
-	return op.Index(op.PathElem().Index)
+	return op.Index(op.PathElem().GetIndex())
 }
 
 // Retrieves the value for the next key. Panics if the
 // current object is not a Map.
 func (op *ObjectPath) GetMapValue() reflect.Value {
-	return op.MapIndex(op.PathElem().Key)
+	return op.MapIndex(op.PathElem().GetKey())
 }
 
 // Sets the next map key to the value of a new reflect.Type.
@@ -132,21 +133,21 @@ func (op *ObjectPath) SetMapValueToNew(newType reflect.Type) {
 // Sets the next map key to the given value. Panics if the
 // newValue is not assignable to the Map value.
 func (op *ObjectPath) SetMapValue(newValue reflect.Value) {
-	op.SetMapIndex(op.PathElem().Key, newValue)
+	op.SetMapIndex(op.PathElem().GetKey(), newValue)
 }
 
 // Returns true if the current PathElement is a pointer.
 func (op *ObjectPath) IsPointer() bool {
-	return op.PathElem().Pointer
+	return op.PathElem().IsPointer()
 }
 
 // Returns true if the next index is at the end of a Slice.
 // This means that an append will be successful at this point.
 func (op *ObjectPath) NeedsAppend() bool {
-	if op.Len() < op.PathElem().Index {
-		panic(NewPatchError("index (%v) larger than slice size(%v)", op.PathElem().Index, op.Len()))
+	if op.Len() < op.PathElem().GetIndex() {
+		panic(NewPatchError("index (%v) larger than slice size(%v)", op.PathElem().GetIndex(), op.Len()))
 	}
-	return op.Len() == op.PathElem().Index
+	return op.Len() == op.PathElem().GetIndex()
 }
 
 // Appends to the current Slice a new object of newType.
@@ -164,7 +165,7 @@ func (op *ObjectPath) Append(newVal reflect.Value) {
 // Returns true if the next index exists in the current Slice
 // or Array. Panics if current element is not a Slice or Array.
 func (op *ObjectPath) InBounds() bool {
-	return op.Len() > op.PathElem().Index
+	return op.Len() > op.PathElem().GetIndex()
 }
 
 // Create the next object in the path if it does not currently exist.
@@ -203,13 +204,13 @@ func (op *ObjectPath) Set(newVal reflect.Value) {
 		prevVal = CopyReflectValue(op.lastVals[i])
 		switch prevVal.Kind() {
 		case reflect.Struct:
-			prevVal.Field(op.Path[i].Index).Set(newVal)
+			prevVal.Field(op.Path[i].GetIndex()).Set(newVal)
 		case reflect.Map:
-			prevVal.SetMapIndex(op.Path[i].Key, newVal)
+			prevVal.SetMapIndex(op.Path[i].GetKey(), newVal)
 		case reflect.Array:
 			fallthrough
 		case reflect.Slice:
-			prevVal.Index(op.Path[i].Index).Set(newVal)
+			prevVal.Index(op.Path[i].GetIndex()).Set(newVal)
 		case reflect.Ptr:
 			prevVal.Elem().Set(newVal)
 		default:
@@ -232,7 +233,7 @@ func (op *ObjectPath) Delete() {
 	lastVal := op.LastVal()
 	switch lastVal.Kind() {
 	case reflect.Map:
-		if lastVal.MapIndex(op.Path[op.index].Key).IsValid() {
+		if lastVal.MapIndex(op.Path[op.index].GetKey()).IsValid() {
 			// Setting a Map value to the 'nil' value clears the key.
 			op.Set(reflect.Value{})
 		}

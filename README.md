@@ -9,5 +9,6 @@ This library is primarily designed to move an object from one state to the next 
 ## Improvements and Future Work
 * Currently the tests are lacking and there are possibly cases which are not covered or behave badly. Work on this area is currently in progress.
 * Comparision of arrays and slices is currently only by index, future work is planned to provide plugins/callbacks which allow to provide an identity for a particular object in an array or slice and compute the difference based on that.
+* For instances when you want to ignore certain known changes, providing a mechanism for exclusions is future work.
 * Renaming a map key results in a delete and addition.
 * Example usage as part of a Kubernetes operator is currently a near term goal.

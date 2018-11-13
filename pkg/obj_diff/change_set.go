@@ -2,6 +2,7 @@ package obj_diff
 
 import (
 	"fmt"
+	. "github.com/takari/object-diff/pkg/obj_diff/helpers"
 	"reflect"
 )
 
@@ -17,16 +18,16 @@ func (cs ChangeSet) String() string {
 
 // Add a change to this change set.
 func (cs *ChangeSet) AddPathValue(ctx []PathElement, v reflect.Value) {
-	cs.Changes = append(cs.Changes, Change{Path: ctx, NewValue: v})
+	cs.Changes = append(cs.Changes, NewValueChange(ctx, v))
 }
 
 // Add a delete to this change set.
 func (cs *ChangeSet) AddPathDelete(ctx []PathElement) {
-	cs.Changes = append(cs.Changes, Change{Path: ctx, Deleted: true})
+	cs.Changes = append(cs.Changes, NewDeleteChange(ctx))
 }
 
-// Patch an object with the Changes within this ChangeSet. Panics if obj is not
-// settable or does not match the BaseType.
+// Patch an object (in place/by reference) with the Changes within this
+// ChangeSet. Panics if obj is not settable or does not match the BaseType.
 func (cs ChangeSet) Patch(obj interface{}) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -59,7 +60,7 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 		// fmt.Printf("Root: %+v\n", root)
 		change := cs.Changes[i]
 		fmt.Printf("Change: %+v\n", change)
-		op := NewObjectPathWithConfig(root, change.Path, opConfig)
+		op := NewObjectPathWithConfig(root, change.GetPath(), opConfig)
 		for op.Next() {
 			// This loop is primarily ornamental, the call above to op.Next()
 			// traverses the path, but there is nothing to do as the ObjectPath
@@ -85,10 +86,10 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 
 		// Once we are at the end of the path we
 		// either delete or update a value.
-		if change.Deleted {
+		if change.IsDelete() {
 			op.Delete()
 		} else {
-			op.Set(change.NewValue)
+			op.Set(change.GetNewValue())
 		}
 	}
 

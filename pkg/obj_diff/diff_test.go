@@ -2,6 +2,7 @@ package obj_diff
 
 import (
 	"fmt"
+	. "github.com/takari/object-diff/pkg/obj_diff/helpers"
 	"reflect"
 	"testing"
 )
@@ -61,7 +62,7 @@ func buildSimpleTest(name string, base interface{}, update interface{}, path []P
 		expect: ChangeSet{
 			BaseType: objectType,
 			Changes: []Change{
-				{Path: path, NewValue: reflect.ValueOf(newValue), Deleted: false},
+				NewValueChange(path, reflect.ValueOf(newValue)),
 			},
 		},
 	}

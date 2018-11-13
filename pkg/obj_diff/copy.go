@@ -1,6 +1,7 @@
 package obj_diff
 
 import (
+	. "github.com/takari/object-diff/pkg/obj_diff/helpers"
 	"reflect"
 )
 

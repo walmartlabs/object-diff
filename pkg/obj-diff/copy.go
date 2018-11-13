@@ -4,10 +4,13 @@ import (
 	"reflect"
 )
 
+// Reflectively make a copy of an object. This uses reflection to
+// traverse an object and create a copy.
 func CopyValueReflectively(oldValue interface{}) interface{} {
 	return CopyReflectValue(reflect.ValueOf(oldValue)).Interface()
 }
 
+// Reflectively and recursively makes a copy of a reflect.Value.
 func CopyReflectValue(oldVal reflect.Value) (newVal reflect.Value) {
 	newType := oldVal.Type()
 	switch newType.Kind() {
@@ -51,6 +54,7 @@ func CopyReflectValue(oldVal reflect.Value) (newVal reflect.Value) {
 	return
 }
 
+// Make a copy of a basic non-container type.
 func copyBasic(oldVal reflect.Value) (newVal reflect.Value) {
 	switch oldVal.Kind() {
 	case reflect.String:

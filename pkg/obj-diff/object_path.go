@@ -6,22 +6,34 @@ import (
 )
 
 type ObjectPathConfig struct {
+	// If the path would traverse into an object (struct, map,
+	// array, slice, pointer) that does not exist, create it.
 	CreateMissingObjects bool
+	// If the path traverses into an invalid Map key or Slice
+	// index, create the object that should be there.
 	CreateMissingValues bool
 }
 
 // var DEFAULT_CONFIG = ObjectPathConfig{false, false}
 
-// func NewObjectPath(root reflect.Value, path []PathElement) *objectPath {
+// func NewObjectPath(root reflect.Value, path []PathElement) *ObjectPath {
 // 	return NewObjectPathWithConfig(root, path, DEFAULT_CONFIG)
 // }
 
-func NewObjectPathWithConfig(root reflect.Value, path []PathElement, config ObjectPathConfig) *objectPath {
+// Creates an Object path, if root is not writable then mutating actions on
+// the resulting ObjectPath will panic. The path is a list of PathElements to
+// follow when traversing root. Finally config contains options and actions
+// that ObjectPath can take for you automatically.
+func NewObjectPathWithConfig(root reflect.Value, path []PathElement, config ObjectPathConfig) *ObjectPath {
 	pathWithPtr := append([]PathElement{{Pointer: true}}, path...)
-	return &objectPath{Value: root, lastVals: []reflect.Value{}, index: -1, Path: pathWithPtr, config: config}
+	return &ObjectPath{Value: root, lastVals: []reflect.Value{}, index: -1, Path: pathWithPtr, config: config}
 }
 
-type objectPath struct {
+// An Object path provides a way to step through a given []PathElement as it
+// relates to object given at creation and take actions at each point along the
+// way. At any given point the ObjectPath can be used as a reflect.Value at the
+// current point in the traversal of path.
+type ObjectPath struct {
 	reflect.Value
 	lastVals []reflect.Value
 	index    int
@@ -29,7 +41,9 @@ type objectPath struct {
 	config   ObjectPathConfig
 }
 
-func (op *objectPath) Next() (hasNext bool) {
+// Advance to the next object in the path. Returns true if there are further
+// elements in the path, and false otherwise.
+func (op *ObjectPath) Next() (hasNext bool) {
 	op.lastVals = append(op.lastVals, op.Value)
 	switch op.Kind() {
 	case reflect.Struct:
@@ -53,7 +67,8 @@ func (op *objectPath) Next() (hasNext bool) {
 	return op.index+1 < len(op.Path)
 }
 
-func (op objectPath) nextConfigOptions() {
+// Apply optional config items after advancement.
+func (op ObjectPath) nextConfigOptions() {
 	switch op.Kind() {
 	case reflect.Struct:
 
@@ -80,76 +95,111 @@ func (op objectPath) nextConfigOptions() {
 	}
 }
 
-func (op objectPath) PathElem() PathElement {
+// Retrieve the current Path Element.
+func (op ObjectPath) PathElem() PathElement {
 	return op.Path[op.index+1]
 }
 
-func (op objectPath) LastVal() reflect.Value {
+// Retrieve the last value of this ObjectPath.
+func (op ObjectPath) LastVal() reflect.Value {
 	return op.lastVals[op.index]
 }
 
-func (op *objectPath) GetField() reflect.Value {
+// Retrieve the next from a Struct type. Panics if the
+// current object is not a Struct.
+func (op *ObjectPath) GetField() reflect.Value {
 	return op.Field(op.PathElem().Index)
 }
 
-func (op *objectPath) GetIndex() reflect.Value {
+// Retrieves the next index. Panics if the current object
+// is not an Array or Slice.
+func (op *ObjectPath) GetIndex() reflect.Value {
 	return op.Index(op.PathElem().Index)
 }
 
-func (op *objectPath) GetMapValue() reflect.Value {
+// Retrieves the value for the next key. Panics if the
+// current object is not a Map.
+func (op *ObjectPath) GetMapValue() reflect.Value {
 	return op.MapIndex(op.PathElem().Key)
 }
 
-func (op *objectPath) SetMapValueToNew(newType reflect.Type) {
+// Sets the next map key to the value of a new reflect.Type.
+// Panics if newType is not assignable to the Map value.
+func (op *ObjectPath) SetMapValueToNew(newType reflect.Type) {
 	op.SetMapValue(buildNewValue(newType))
 }
 
-func (op *objectPath) SetMapValue(newValue reflect.Value) {
+// Sets the next map key to the given value. Panics if the
+// newValue is not assignable to the Map value.
+func (op *ObjectPath) SetMapValue(newValue reflect.Value) {
 	op.SetMapIndex(op.PathElem().Key, newValue)
 }
 
-func (op *objectPath) IsPointer() bool {
+// Returns true if the current PathElement is a pointer.
+func (op *ObjectPath) IsPointer() bool {
 	return op.PathElem().Pointer
 }
 
-func (op *objectPath) NeedsAppend() bool {
+// Returns true if the next index is at the end of a Slice.
+// This means that an append will be successful at this point.
+func (op *ObjectPath) NeedsAppend() bool {
 	if op.Len() < op.PathElem().Index {
 		panic(NewPatchError("index (%v) larger than slice size(%v)", op.PathElem().Index, op.Len()))
 	}
 	return op.Len() == op.PathElem().Index
 }
 
-func (op *objectPath) AppendNew(newType reflect.Type) {
+// Appends to the current Slice a new object of newType.
+// Panics if newType is not assignable to the Slice type.
+func (op *ObjectPath) AppendNew(newType reflect.Type) {
 	op.Append(buildNewValue(newType))
 }
 
-func (op *objectPath) Append(newVal reflect.Value) {
+// Appends to the current Slice a newValue.
+// Panics if newValue is not assignable to the Slice type.
+func (op *ObjectPath) Append(newVal reflect.Value) {
 	op.Set(reflect.Append(op.Value, newVal))
 }
 
-func (op *objectPath) InBounds() bool {
+// Returns true if the next index exists in the current Slice
+// or Array. Panics if current element is not a Slice or Array.
+func (op *ObjectPath) InBounds() bool {
 	return op.Len() > op.PathElem().Index
 }
 
-func (op *objectPath) CreateIfMissing() {
+// Create the next object in the path if it does not currently exist.
+func (op *ObjectPath) CreateIfMissing() {
 	if op.IsNil() {
 		op.SetToNew(op.Type())
 	}
 }
 
-func (op *objectPath) SetToNew(newType reflect.Type) {
+// Set the current value to an instance of newType. Panics
+// if newType is not assignable to the current value.
+func (op *ObjectPath) SetToNew(newType reflect.Type) {
 	op.Set(buildNewValue(newType))
 }
 
-func (op *objectPath) Set(newVal reflect.Value) {
+// Set the current value to newValue. Panics if newValue
+// is not assignable to the current value.
+func (op *ObjectPath) Set(newVal reflect.Value) {
 	fmt.Println("\n### In set() ###")
 	fmt.Printf("CURRENT: %T, settable: %v\n", op.Interface(), op.CanSet())
 	fmt.Printf("newVal: %+v\n", newVal)
 
 	settable := op.Value
 	prevVal := reflect.ValueOf(nil)
+	// This loop primarily exists to backtrack to an object which is settable.
+	// This most likely occurs when we're trying to set the value of a Map as
+	// Map values are not directly settable. However this could occur in other
+	// situations.
 	for i := op.index; !settable.CanSet(); i-- {
+		if i < 0 {
+			panic("No settable object available!")
+		}
 		settable = op.lastVals[i]
+		// As we backtrack it is necessary to recreate the objects we have passed
+		// as they are not settable and thus copying/cloning them is the only option.
 		prevVal = CopyReflectValue(op.lastVals[i])
 		switch prevVal.Kind() {
 		case reflect.Struct:
@@ -175,13 +225,15 @@ func (op *objectPath) Set(newVal reflect.Value) {
 	fmt.Println("### Leaving set() ###")
 }
 
-// Delete is only supported for Map, Slice, and Ptr.
-func (op *objectPath) Delete() {
+// Delete the object at the current point in the path. Delete
+// is only supported for Map, Slice, and Ptr; panics otherwise.
+func (op *ObjectPath) Delete() {
 	fmt.Println("\n### In delete() ###")
 	lastVal := op.LastVal()
 	switch lastVal.Kind() {
 	case reflect.Map:
 		if lastVal.MapIndex(op.Path[op.index].Key).IsValid() {
+			// Setting a Map value to the 'nil' value clears the key.
 			op.Set(reflect.Value{})
 		}
 	case reflect.Slice:
@@ -194,6 +246,7 @@ func (op *objectPath) Delete() {
 	fmt.Println("### Leaving delete() ###")
 }
 
+// Build a new value of type newType.
 func buildNewValue(newType reflect.Type) (newValue reflect.Value) {
 	fmt.Printf("Building new %v\n", newType)
 	switch newType.Kind() {

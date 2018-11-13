@@ -7,7 +7,10 @@ import (
 
 // BUG(11xor6) Renaming of Map keys results in a deletion and addition.
 // BUG(11xor6) Lists with different orders but the same elements will generate changes.
-func Diff(obj1 interface{}, obj2 interface{}) (*changeSet, error) {
+
+// Computes the change set between two objects, both objects must have the same type.
+// This returns a ChangeSet on success and an error on failure.
+func Diff(obj1 interface{}, obj2 interface{}) (*ChangeSet, error) {
 	v1 := reflect.ValueOf(obj1)
 	v2 := reflect.ValueOf(obj2)
 
@@ -15,17 +18,17 @@ func Diff(obj1 interface{}, obj2 interface{}) (*changeSet, error) {
 		return nil, fmt.Errorf("type of obj1(%T) not equal to obj2(%T)", obj1, obj2)
 	}
 
-	changeSet := &changeSet{BaseType: v1.Type()}
+	changeSet := &ChangeSet{BaseType: v1.Type()}
 	return changeSet, doDiff(v1.Type(), v1, v2, changeSet, []PathElement{})
 }
 
-func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *changeSet, ctx []PathElement) error {
+func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *ChangeSet, ctx []PathElement) error {
 
 	switch currType.Kind() {
 	case reflect.Struct:
 		for f := 0; f < currType.NumField(); f++ {
 			currField := currType.Field(f)
-			newCtx := extendContext(ctx, NewNameElem(f, currField.Name))
+			newCtx := extendContext(ctx, NewFieldElem(f, currField.Name))
 			err := doDiff(currField.Type, v1.Field(f), v2.Field(f), cs, newCtx)
 			if err != nil {
 				return err
@@ -36,11 +39,13 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *chang
 			val2 := v2.MapIndex(key)
 			newCtx := extendContext(ctx, NewKeyElem(key))
 			if val2.IsValid() {
+				// Exists in both v1 and v2, do they match?
 				err := doDiff(currType.Elem(), v1.MapIndex(key), v2.MapIndex(key), cs, newCtx)
 				if err != nil {
 					return err
 				}
 			} else {
+				// Exists in v1 and not in v2.
 				cs.AddPathDelete(newCtx)
 			}
 		}
@@ -48,6 +53,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *chang
 		for _, key := range v2.MapKeys() {
 			val1 := v1.MapIndex(key)
 			if !val1.IsValid() {
+				// Exists in v2 and not in v1.
 				newCtx := extendContext(ctx, NewKeyElem(key))
 				cs.AddPathValue(newCtx, v2.MapIndex(key))
 			}
@@ -104,6 +110,9 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *chang
 	return nil
 }
 
+// This creates a copy of the context and adds the new element to it. It is
+// important to make a copy as the same context could be used by multiple
+// changes and could modify each other.
 func extendContext(ctx []PathElement, pe PathElement) []PathElement {
 	newCtx := make([]PathElement, len(ctx), len(ctx) + 1)
 	copy(newCtx, ctx)
@@ -125,7 +134,7 @@ func intMax(x int, y int) int {
 	return y
 }
 
-func compareBasicType(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *changeSet, ctx []PathElement) error {
+func compareBasicType(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *ChangeSet, ctx []PathElement) error {
 	switch currType.Kind() {
 	case reflect.String:
 		if v1.String() != v2.String() {

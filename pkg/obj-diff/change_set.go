@@ -5,24 +5,29 @@ import (
 	"reflect"
 )
 
-type changeSet struct {
+// A ChangeSet represents the result of a diff as a set of Changes against a Base Type.
+type ChangeSet struct {
 	BaseType reflect.Type
 	Changes  []Change
 }
 
-func (cs changeSet) String() string {
+func (cs ChangeSet) String() string {
 	return fmt.Sprintf("BaseType: %v Changes: %v", cs.BaseType, cs.Changes)
 }
 
-func (cs *changeSet) AddPathValue(ctx []PathElement, v reflect.Value) {
+// Add a change to this change set.
+func (cs *ChangeSet) AddPathValue(ctx []PathElement, v reflect.Value) {
 	cs.Changes = append(cs.Changes, Change{Path: ctx, NewValue: v})
 }
 
-func (cs *changeSet) AddPathDelete(ctx []PathElement) {
+// Add a delete to this change set.
+func (cs *ChangeSet) AddPathDelete(ctx []PathElement) {
 	cs.Changes = append(cs.Changes, Change{Path: ctx, Deleted: true})
 }
 
-func (cs changeSet) Patch(obj interface{}) (err error) {
+// Patch an object with the Changes within this ChangeSet. Panics if obj is not
+// settable or does not match the BaseType.
+func (cs ChangeSet) Patch(obj interface{}) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			e, ok := r.(PatchError)
@@ -56,6 +61,10 @@ func (cs changeSet) Patch(obj interface{}) (err error) {
 		fmt.Printf("Change: %+v\n", change)
 		op := NewObjectPathWithConfig(root, change.Path, opConfig)
 		for op.Next() {
+			// This loop is primarily ornamental, the call above to op.Next()
+			// traverses the path, but there is nothing to do as the ObjectPath
+			// takes care of everything. This is here primarily to be an extension
+			// point for future changes.
 			fmt.Printf("Types lastVal: %T, currVal: %T\n", op.LastVal().Interface(), op.Interface())
 			fmt.Printf("Kinds lastVal: %v, currVal: %v\n", op.LastVal().Kind(), op.Kind())
 			fmt.Println("==================")
@@ -74,6 +83,8 @@ func (cs changeSet) Patch(obj interface{}) (err error) {
 			}
 		}
 
+		// Once we are at the end of the path we
+		// either delete or update a value.
 		if change.Deleted {
 			op.Delete()
 		} else {
@@ -84,7 +95,11 @@ func (cs changeSet) Patch(obj interface{}) (err error) {
 	return nil
 }
 
-func (cs changeSet) Equals(other changeSet) bool {
+// Compares this ChangeSet against another ChangeSet,
+// returns true if the are the same. This is currently
+// used only in the testing framework, but could have
+// other uses.
+func (cs ChangeSet) Equals(other ChangeSet) bool {
 	if cs.BaseType !=  other.BaseType {
 		return false
 	}

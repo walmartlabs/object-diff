@@ -21,30 +21,6 @@ type complexStruct struct {
 	F *complexStruct
 }
 
-type int32Struct struct {
-	A int32
-}
-
-type structStruct struct {
-	A int32Struct
-}
-
-type structMap struct {
-	A map[string]int32
-}
-
-type structArray struct {
-	A [3]int32
-}
-
-type structSlice struct {
-	A []int32
-}
-
-type structPtr struct {
-	A *int32
-}
-
 func TestCopyValueReflectively(t *testing.T) {
 	ts1 := simpleStruct{123, 3.14, "ABC", true}
 	ts2 := simpleStruct{456, 2.71, "DEF", false}
@@ -56,7 +32,7 @@ func TestCopyValueReflectively(t *testing.T) {
 
 
 	int1 := int32(1)
-	structInt := int32Struct{A: 1}
+	structInt := structInt32{A: 1}
 	mapInt := map[string]int32{"A": 1}
 	arrayInt := [3]int32{1, 2, 3}
 	sliceInt := []int32{1, 2, 3}
@@ -64,23 +40,23 @@ func TestCopyValueReflectively(t *testing.T) {
 
 	structStruct1 := structStruct{A: structInt}
 	structMap1 := structMap{A: mapInt}
-	structArray1 := structArray{A: arrayInt}
+	structArray1 := structArray3{A: arrayInt}
 	structSlice1 := structSlice{A: sliceInt}
 	structPtr1 := structPtr{A: ptrInt1}
 
-	mapStruct1 := map[string]int32Struct{"A": structInt}
+	mapStruct1 := map[string]structInt32{"A": structInt}
 	mapMap1 := map[string]map[string]int32{"A": mapInt}
 	mapArray1 := map[string][3]int32{"A": arrayInt}
 	mapSlice1 := map[string][]int32{"A": sliceInt}
 	mapPtr1 := map[string]*int32{"A": ptrInt1}
 
-	arrayStruct1 := [3]int32Struct{structInt, structInt, structInt}
+	arrayStruct1 := [3]structInt32{structInt, structInt, structInt}
 	arrayMap1 :=[3]map[string]int32{mapInt, mapInt, mapInt}
 	arrayArray1 := [3][3]int32{arrayInt, arrayInt, arrayInt}
 	arraySlice1 := [3][]int32{sliceInt, sliceInt, sliceInt}
 	arrayPtr1 := [3]*int32{ptrInt1, ptrInt1, ptrInt1}
 
-	sliceStruct1 := []int32Struct{structInt, structInt, structInt}
+	sliceStruct1 := []structInt32{structInt, structInt, structInt}
 	sliceMap1 :=[]map[string]int32{mapInt, mapInt, mapInt}
 	sliceArray1 := [][3]int32{arrayInt, arrayInt, arrayInt}
 	sliceSlice1 := [][]int32{sliceInt, sliceInt, sliceInt}

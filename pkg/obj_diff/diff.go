@@ -94,7 +94,9 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 		}
 	case reflect.Ptr:
 		newCtx := extendContext(ctx, NewPtrElem())
-		if v1.IsNil() {
+		if v1.IsNil() && v2.IsNil() {
+			return nil
+		} else if v1.IsNil() {
 			cs.AddPathValue(newCtx, v2.Elem())
 		} else if v2.IsNil() {
 			cs.AddPathDelete(newCtx)

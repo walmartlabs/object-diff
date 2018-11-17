@@ -46,9 +46,14 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 		return NewPatchError("can not set obj1 of Type: %v", root.Type())
 	}
 
-	if root.Elem().Type() != cs.BaseType {
-		return NewPatchError("obj1 (%T) is not of type %v", obj, cs.BaseType)
+	if root.Type() != cs.BaseType {
+		if root.Elem().Type() == cs.BaseType {
+			root = root.Elem()
+		} else {
+			return NewPatchError("obj (%v) is not of type %v", reflect.TypeOf(obj), cs.BaseType)
+		}
 	}
+
 
 	opConfig := ObjectPathConfig{true, true}
 
@@ -61,6 +66,8 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 		change := cs.Changes[i]
 		fmt.Printf("Change: %+v\n", change)
 		op := NewObjectPathWithConfig(root, change.GetPath(), opConfig)
+		// The first call to op.Next() skips past the pointer we were passed. If we
+		// want to do anything with that pointer beforehand we must do it here.
 		for op.Next() {
 			// This loop is primarily ornamental, the call above to op.Next()
 			// traverses the path, but there is nothing to do as the ObjectPath

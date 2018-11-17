@@ -26,8 +26,10 @@ type ObjectPathConfig struct {
 // follow when traversing root. Finally config contains options and actions
 // that ObjectPath can take for you automatically.
 func NewObjectPathWithConfig(root reflect.Value, path []PathElement, config ObjectPathConfig) *ObjectPath {
-	pathWithPtr := append([]PathElement{NewPtrElem()}, path...)
-	return &ObjectPath{Value: root, lastVals: []reflect.Value{}, index: -1, Path: pathWithPtr, config: config}
+	objectPath := &ObjectPath{Value: root, lastVals: []reflect.Value{}, index: -1, Path: path, config: config}
+	// We need to run this here because the first call to Next() will operate on the second value.
+	objectPath.nextConfigOptions()
+	return objectPath
 }
 
 // An Object path provides a way to step through a given []PathElement as it

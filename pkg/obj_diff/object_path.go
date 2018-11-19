@@ -1,7 +1,6 @@
 package obj_diff
 
 import (
-	"fmt"
 	. "github.com/takari/object-diff/pkg/obj_diff/helpers"
 	"reflect"
 )
@@ -186,9 +185,9 @@ func (op *ObjectPath) SetToNew(newType reflect.Type) {
 // Set the current value to newValue. Panics if newValue
 // is not assignable to the current value.
 func (op *ObjectPath) Set(newVal reflect.Value) {
-	fmt.Println("\n### In set() ###")
-	fmt.Printf("CURRENT: %T, settable: %v\n", op.Interface(), op.CanSet())
-	fmt.Printf("newVal: %+v\n", newVal)
+	// fmt.Println("\n### In set() ###")
+	// fmt.Printf("CURRENT: %T, settable: %v\n", op.Interface(), op.CanSet())
+	// fmt.Printf("newVal: %+v\n", newVal)
 
 	settable := op.Value
 	prevVal := reflect.ValueOf(nil)
@@ -220,18 +219,18 @@ func (op *ObjectPath) Set(newVal reflect.Value) {
 		}
 		newVal = prevVal
 
-		fmt.Printf("CURRENT: %T, settable: %v\n", settable.Interface(), settable.CanSet())
-		fmt.Printf("newVal: %+v\n", newVal)
+		// fmt.Printf("CURRENT: %T, settable: %v\n", settable.Interface(), settable.CanSet())
+		// fmt.Printf("newVal: %+v\n", newVal)
 	}
 
 	settable.Set(newVal)
-	fmt.Println("### Leaving set() ###")
+	// fmt.Println("### Leaving set() ###")
 }
 
 // Delete the object at the current point in the path. Delete
 // is only supported for Map, Slice, and Ptr; panics otherwise.
 func (op *ObjectPath) Delete() {
-	fmt.Println("\n### In delete() ###")
+	// fmt.Println("\n### In delete() ###")
 	lastVal := op.LastVal()
 	switch lastVal.Kind() {
 	case reflect.Map:
@@ -246,12 +245,12 @@ func (op *ObjectPath) Delete() {
 	default:
 		panic(NewPatchError("unhandled delete kind '%v'", lastVal.Kind()))
 	}
-	fmt.Println("### Leaving delete() ###")
+	// fmt.Println("### Leaving delete() ###")
 }
 
 // Build a new value of type newType.
 func buildNewValue(newType reflect.Type) (newValue reflect.Value) {
-	fmt.Printf("Building new %v\n", newType)
+	// fmt.Printf("Building new %v\n", newType)
 	switch newType.Kind() {
 	case reflect.Map:
 		newValue = reflect.MakeMap(newType)
@@ -262,6 +261,6 @@ func buildNewValue(newType reflect.Type) (newValue reflect.Value) {
 	default:
 		newValue = reflect.New(newType).Elem()
 	}
-	fmt.Printf("Built %+v\n", newValue.Interface())
+	// fmt.Printf("Built %+v\n", newValue.Interface())
 	return
 }

@@ -39,7 +39,7 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 		if r := recover(); r != nil {
 			e, ok := r.(PatchError)
 			if ok {
-				fmt.Println("Recovered in Patch", r)
+				// fmt.Println("Recovered in Patch", r)
 				err = e
 			} else {
 				panic(r)
@@ -64,13 +64,13 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 	opConfig := ObjectPathConfig{true, true}
 
 	for i := 0; i < len(cs.Changes); i++ {
-		fmt.Println()
-		fmt.Printf("##################\n")
-		fmt.Printf("### New Change ###\n")
-		fmt.Printf("##################\n")
+		// fmt.Println()
+		// fmt.Printf("##################\n")
+		// fmt.Printf("### New Change ###\n")
+		// fmt.Printf("##################\n")
 		// fmt.Printf("Root: %+v\n", root)
 		change := cs.Changes[i]
-		fmt.Printf("Change: %+v\n", change)
+		// fmt.Printf("Change: %+v\n", change)
 		op := NewObjectPathWithConfig(root, change.GetPath(), opConfig)
 		// The first call to op.Next() skips past the pointer we were passed. If we
 		// want to do anything with that pointer beforehand we must do it here.
@@ -79,9 +79,9 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 			// traverses the path, but there is nothing to do as the ObjectPath
 			// takes care of everything. This is here primarily to be an extension
 			// point for future changes.
-			fmt.Printf("Types lastVal: %T, currVal: %T\n", op.LastVal().Interface(), op.Interface())
-			fmt.Printf("Kinds lastVal: %v, currVal: %v\n", op.LastVal().Kind(), op.Kind())
-			fmt.Println("==================")
+			// fmt.Printf("Types lastVal: %T, currVal: %T\n", op.LastVal().Interface(), op.Interface())
+			// fmt.Printf("Kinds lastVal: %v, currVal: %v\n", op.LastVal().Kind(), op.Kind())
+			// fmt.Println("==================")
 
 			switch op.Kind() {
 			case reflect.Struct:

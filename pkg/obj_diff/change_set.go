@@ -17,13 +17,19 @@ func (cs ChangeSet) String() string {
 }
 
 // Add a change to this change set.
-func (cs *ChangeSet) AddPathValue(ctx []PathElement, v reflect.Value) {
-	cs.Changes = append(cs.Changes, NewValueChange(ctx, v))
+func (cs *ChangeSet) AddPathChange(ctx []PathElement, oldValue reflect.Value, newValue reflect.Value) {
+	cs.Changes = append(cs.Changes, NewValueChange(ctx, oldValue, newValue))
 }
 
+// Add an addition to this change set.
+func (cs *ChangeSet) AddPathAddition(ctx []PathElement, newValue reflect.Value) {
+	cs.Changes = append(cs.Changes, NewValueAddition(ctx, newValue))
+}
+
+
 // Add a delete to this change set.
-func (cs *ChangeSet) AddPathDelete(ctx []PathElement) {
-	cs.Changes = append(cs.Changes, NewDeleteChange(ctx))
+func (cs *ChangeSet) AddPathDeletion(ctx []PathElement, oldValue reflect.Value) {
+	cs.Changes = append(cs.Changes, NewValueDeletion(ctx, oldValue))
 }
 
 // Patch an object (in place/by reference) with the Changes within this
@@ -93,7 +99,7 @@ func (cs ChangeSet) Patch(obj interface{}) (err error) {
 
 		// Once we are at the end of the path we
 		// either delete or update a value.
-		if change.IsDelete() {
+		if change.IsDeletion() {
 			op.Delete()
 		} else {
 			op.Set(change.GetNewValue())

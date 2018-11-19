@@ -6,25 +6,46 @@ import (
 	"strings"
 )
 
-func NewValueChange(path []PathElement, newValue reflect.Value) Change {
+func NewValueChange(path []PathElement, oldValue reflect.Value, newValue reflect.Value) Change {
+	var oldVal interface{}
+	if oldValue.IsValid() {
+		oldVal = oldValue.Interface()
+	}
+
 	var newVal interface{}
 	if newValue.IsValid() {
 		newVal = newValue.Interface()
 	}
 
-	return Change{path: path, newValue: newVal}
+	return Change{path: path, oldValue: oldVal, newValue: newVal}
 }
 
-func NewDeleteChange(path []PathElement) Change {
-	return Change{path: path, delete: true}
+func NewValueAddition(path []PathElement, newValue reflect.Value) Change {
+	var newVal interface{}
+	if newValue.IsValid() {
+		newVal = newValue.Interface()
+	}
+
+	return Change{path: path, newValue: newVal, addition: true}
+}
+
+func NewValueDeletion(path []PathElement, oldValue reflect.Value) Change {
+	var oldVal interface{}
+	if oldValue.IsValid() {
+		oldVal = oldValue.Interface()
+	}
+
+	return Change{path: path, oldValue: oldVal, deletion: true}
 }
 
 // Change represents a single change to an object. It captures the
 // path and either a newValue or a flag to delete the destination.
 type Change struct {
 	path     []PathElement
+	oldValue interface{}
 	newValue interface{}
-	delete   bool
+	deletion bool
+	addition bool
 }
 
 func (c Change) GetPath() []PathElement {
@@ -35,14 +56,14 @@ func (c Change) GetNewValue() reflect.Value {
 	return reflect.ValueOf(c.newValue)
 }
 
-func (c Change) IsDelete() bool {
-	return c.delete
+func (c Change) IsDeletion() bool {
+	return c.deletion
 }
 
 // Compare this Change against another Change. Returns true if they
 // are the same. Currently only used in testing.
 func (c Change) Equals(other Change) bool {
-	if c.delete != other.delete {
+	if c.deletion != other.deletion {
 		return false
 	}
 
@@ -76,7 +97,7 @@ func (c Change) PathString() string {
 }
 
 func (c Change) String() string {
-	if c.delete {
+	if c.deletion {
 		return fmt.Sprintf("%v -> [Deleted]", c.PathString())
 	}
 

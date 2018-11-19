@@ -47,7 +47,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 				}
 			} else {
 				// Exists in v1 and not in v2.
-				cs.AddPathDelete(newCtx)
+				cs.AddPathDeletion(newCtx, v1.MapIndex(key))
 			}
 		}
 
@@ -56,7 +56,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 			if !val1.IsValid() {
 				// Exists in v2 and not in v1.
 				newCtx := extendContext(ctx, NewKeyElem(key))
-				cs.AddPathValue(newCtx, v2.MapIndex(key))
+				cs.AddPathAddition(newCtx, v2.MapIndex(key))
 			}
 		}
 	case reflect.Array:
@@ -82,12 +82,12 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 			if maxLen == v1.Len() {
 				for i := minLen; i < maxLen; i++ {
 					newCtx := extendContext(ctx, NewIndexElem(i))
-					cs.AddPathDelete(newCtx)
+					cs.AddPathDeletion(newCtx, v1.Index(i))
 				}
 			} else { // maxLen == v2.Len()
 				for i := minLen; i < maxLen; i++ {
 					newCtx := extendContext(ctx, NewIndexElem(i))
-					cs.AddPathValue(newCtx, v2.Index(i))
+					cs.AddPathAddition(newCtx, v2.Index(i))
 				}
 
 			}
@@ -97,9 +97,9 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 		if v1.IsNil() && v2.IsNil() {
 			return nil
 		} else if v1.IsNil() {
-			cs.AddPathValue(newCtx, v2.Elem())
+			cs.AddPathAddition(newCtx, v2.Elem())
 		} else if v2.IsNil() {
-			cs.AddPathDelete(newCtx)
+			cs.AddPathDeletion(newCtx, v1.Elem())
 		} else {
 			err := doDiff(currType.Elem(), v1.Elem(), v2.Elem(), cs, newCtx)
 			if err != nil {
@@ -141,7 +141,7 @@ func compareBasicType(currType reflect.Type, v1 reflect.Value, v2 reflect.Value,
 	switch currType.Kind() {
 	case reflect.String:
 		if v1.String() != v2.String() {
-			cs.AddPathValue(ctx, v2)
+			cs.AddPathChange(ctx, v1, v2)
 		}
 	case reflect.Int64:
 		fallthrough
@@ -153,7 +153,7 @@ func compareBasicType(currType reflect.Type, v1 reflect.Value, v2 reflect.Value,
 		fallthrough
 	case reflect.Int:
 		if v1.Int() != v2.Int() {
-			cs.AddPathValue(ctx, v2)
+			cs.AddPathChange(ctx, v1, v2)
 		}
 
 	case reflect.Uint64:
@@ -166,26 +166,26 @@ func compareBasicType(currType reflect.Type, v1 reflect.Value, v2 reflect.Value,
 		fallthrough
 	case reflect.Uint:
 		if v1.Uint() != v2.Uint() {
-			cs.AddPathValue(ctx, v2)
+			cs.AddPathChange(ctx, v1, v2)
 		}
 
 	case reflect.Float64:
 		fallthrough
 	case reflect.Float32:
 		if v1.Float() != v2.Float() {
-			cs.AddPathValue(ctx, v2)
+			cs.AddPathChange(ctx, v1, v2)
 		}
 
 	case reflect.Complex128:
 		fallthrough
 	case reflect.Complex64:
 		if v1.Complex() != v2.Complex() {
-			cs.AddPathValue(ctx, v2)
+			cs.AddPathChange(ctx, v1, v2)
 		}
 
 	case reflect.Bool:
 		if v1.Bool() != v2.Bool() {
-			cs.AddPathValue(ctx, v2)
+			cs.AddPathChange(ctx, v1, v2)
 		}
 
 	default:

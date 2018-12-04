@@ -71,7 +71,7 @@ func TestDiffThenPatch(t *testing.T) {
 
 }
 
-func TestDiffPtrsThenPatch(t *testing.T) {
+func TestDiffPointersThenPatch(t *testing.T) {
 	four := int16(4)
 	five := int16(5)
 	nest1 := NestObj{9, "A"}

@@ -6,7 +6,7 @@ package obj_diff
 
 import (
 	"fmt"
-	. "github.com/takari/object-diff/pkg/obj_diff/helpers"
+	. "github.com/walmartlabs/object-diff/pkg/obj_diff/helpers"
 	"reflect"
 	"testing"
 )

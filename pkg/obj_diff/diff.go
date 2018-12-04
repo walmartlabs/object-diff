@@ -6,7 +6,7 @@ package obj_diff
 
 import (
 	"fmt"
-	. "github.com/takari/object-diff/pkg/obj_diff/helpers"
+	. "github.com/walmartlabs/object-diff/pkg/obj_diff/helpers"
 	"reflect"
 )
 
@@ -121,7 +121,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 // important to make a copy as the same context could be used by multiple
 // changes and could modify each other.
 func extendContext(ctx []PathElement, pe PathElement) []PathElement {
-	newCtx := make([]PathElement, len(ctx), len(ctx) + 1)
+	newCtx := make([]PathElement, len(ctx), len(ctx)+1)
 	copy(newCtx, ctx)
 	return append(newCtx, pe)
 }

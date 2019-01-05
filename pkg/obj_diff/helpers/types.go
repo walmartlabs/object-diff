@@ -10,7 +10,23 @@ import (
 	"strings"
 )
 
-func NewValueChange(path []PathElement, oldValue reflect.Value, newValue reflect.Value) Change {
+type Change interface {
+	GetPath() []PathElement
+	GetOldValue() reflect.Value
+	GetNewValue() reflect.Value
+	IsAddition() bool
+	IsDeletion() bool
+	PathString() string
+	Equals(Change) bool
+	fmt.Stringer
+}
+
+type SettableChange interface {
+	Change
+	SetNewValue(reflect.Value) error
+}
+
+func NewValueChange(path []PathElement, oldValue reflect.Value, newValue reflect.Value) SettableChange {
 	var oldVal interface{}
 	if oldValue.IsValid() {
 		oldVal = oldValue.Interface()
@@ -21,30 +37,30 @@ func NewValueChange(path []PathElement, oldValue reflect.Value, newValue reflect
 		newVal = newValue.Interface()
 	}
 
-	return Change{path: path, oldValue: oldVal, newValue: newVal}
+	return &change{path: path, oldValue: oldVal, newValue: newVal}
 }
 
-func NewValueAddition(path []PathElement, newValue reflect.Value) Change {
+func NewValueAddition(path []PathElement, newValue reflect.Value) SettableChange {
 	var newVal interface{}
 	if newValue.IsValid() {
 		newVal = newValue.Interface()
 	}
 
-	return Change{path: path, newValue: newVal, addition: true}
+	return &change{path: path, newValue: newVal, addition: true}
 }
 
-func NewValueDeletion(path []PathElement, oldValue reflect.Value) Change {
+func NewValueDeletion(path []PathElement, oldValue reflect.Value) SettableChange {
 	var oldVal interface{}
 	if oldValue.IsValid() {
 		oldVal = oldValue.Interface()
 	}
 
-	return Change{path: path, oldValue: oldVal, deletion: true}
+	return &change{path: path, oldValue: oldVal, deletion: true}
 }
 
-// Change represents a single change to an object. It captures the
+// change represents a single change to an object. It captures the
 // path and either a newValue or a flag to delete the destination.
-type Change struct {
+type change struct {
 	path     []PathElement
 	oldValue interface{}
 	newValue interface{}
@@ -52,36 +68,61 @@ type Change struct {
 	addition bool
 }
 
-func (c Change) GetPath() []PathElement {
+var _ SettableChange = &change{}
+
+func (c change) GetPath() []PathElement {
 	return c.path
 }
 
-func (c Change) GetNewValue() reflect.Value {
+func (c change) GetOldValue() reflect.Value {
+	return reflect.ValueOf(c.oldValue)
+}
+
+func (c change) GetNewValue() reflect.Value {
 	return reflect.ValueOf(c.newValue)
 }
 
-func (c Change) IsDeletion() bool {
+func (c *change) SetNewValue(newValue reflect.Value) error {
+	if c.addition && !newValue.Type().AssignableTo(reflect.TypeOf(c.newValue)) {
+		return fmt.Errorf("type of newValue (%T) can not be assigned to %T", newValue.Interface(), c.newValue)
+	} else if !newValue.Type().AssignableTo(reflect.TypeOf(c.oldValue)) {
+		return fmt.Errorf("type of newValue (%T) can not be assigned to %T", newValue.Interface(), c.oldValue)
+	}
+
+	c.newValue = newValue.Interface()
+	return nil
+}
+
+func (c change) IsAddition() bool {
+	return c.addition
+}
+
+func (c change) IsDeletion() bool {
 	return c.deletion
 }
 
-// Compare this Change against another Change. Returns true if they
+// Compare this change against another change. Returns true if they
 // are the same. Currently only used in testing.
-func (c Change) Equals(other Change) bool {
-	if c.deletion != other.deletion {
+func (c change) Equals(that Change) bool {
+	if c.IsDeletion() != that.IsDeletion() {
 		return false
 	}
 
-	if !reflect.DeepEqual(c.newValue, other.newValue) {
+	thisValue := c.GetNewValue().Interface()
+	thatValue := that.GetNewValue().Interface()
+	if !reflect.DeepEqual(thisValue, thatValue) {
 		return false
 	}
 
-	if len(c.path) != len(other.path) {
+	thisPath := c.GetPath()
+	thatPath := that.GetPath()
+	if len(thisPath) != len(thatPath) {
 		return false
 	}
 
-	for i := 0; i < len(c.path); i++ {
-		pe1 := c.path[i]
-		pe2 := other.path[i]
+	for i := 0; i < len(thisPath); i++ {
+		pe1 := thisPath[i]
+		pe2 := thatPath[i]
 
 		if !pe1.Equals(pe2) {
 			return false
@@ -92,7 +133,7 @@ func (c Change) Equals(other Change) bool {
 }
 
 // Return the path as a "human readable" string.
-func (c Change) PathString() string {
+func (c change) PathString() string {
 	vsm := make([]string, len(c.path))
 	for i, v := range c.path {
 		vsm[i] = v.String()
@@ -100,7 +141,7 @@ func (c Change) PathString() string {
 	return strings.Join(vsm, "")
 }
 
-func (c Change) String() string {
+func (c change) String() string {
 	if c.deletion {
 		return fmt.Sprintf("%v -> [Deleted]", c.PathString())
 	}
@@ -108,14 +149,23 @@ func (c Change) String() string {
 	return fmt.Sprintf("%v -> %v", c.PathString(), c.newValue)
 }
 
+type PathElement interface {
+	GetIndex() int
+	GetKey() reflect.Value
+	GetName() string
+	IsPointer() bool
+	Equals(PathElement) bool
+	fmt.Stringer
+}
+
 // Create an Array/Slice Index PathElement.
 func NewIndexElem(index int) PathElement {
-	return PathElement{index: index}
+	return pathElement{index: index}
 }
 
 // Create a Struct Field PathElement.
 func NewFieldElem(index int, name string) PathElement {
-	return PathElement{index: index, name: name}
+	return pathElement{index: index, name: name}
 }
 
 // Create a Map Key PathElement.
@@ -128,58 +178,64 @@ func NewKeyElem(key interface{}) PathElement {
 			key = nil
 		}
 	}
-	return PathElement{index: -1, key: key}
+	return pathElement{index: -1, key: key}
 }
 
 // Create a Pointer PathElement.
 func NewPtrElem() PathElement {
-	return PathElement{index: -1, pointer: true}
+	return pathElement{index: -1, pointer: true}
 }
 
 // A PathElement represent a single step
 // in a path through an object.
-type PathElement struct {
+type pathElement struct {
 	index   int
 	name    string
 	key     interface{}
 	pointer bool
 }
 
-func (pe PathElement) GetIndex() int {
+func (pe pathElement) GetIndex() int {
 	return pe.index
 }
 
-func (pe PathElement) GetKey() reflect.Value {
+func (pe pathElement) GetKey() reflect.Value {
 	return reflect.ValueOf(pe.key)
 }
 
-func (pe PathElement) GetName() string {
+func (pe pathElement) GetName() string {
 	return pe.name
 }
 
-func (pe PathElement) IsPointer() bool {
+func (pe pathElement) IsPointer() bool {
 	return pe.pointer
 }
 
 // Compares this PathElement against another PathElement. Returns true if
 // they are the same. Currently only used in testing.
-func (pe PathElement) Equals(other PathElement) bool {
-	if pe.index != other.index {
+func (pe pathElement) Equals(other PathElement) bool {
+	if pe.GetIndex() != other.GetIndex() {
 		return false
 	}
 
-	if !reflect.DeepEqual(pe.key, other.key) {
+	thisKey := pe.GetKey()
+	thatKey := other.GetKey()
+	if thisKey.IsValid() || thatKey.IsValid() {
+		if thisKey.IsValid() && thatKey.IsValid() {
+			if !reflect.DeepEqual(thisKey.Interface(), thatKey.Interface()) {
+				return false
+			}
+		}
+	} else
+
+	if pe.IsPointer() != other.IsPointer() {
 		return false
 	}
 
-	if pe.pointer != other.pointer {
-		return false
-	}
-
-	return pe.name == other.name
+	return pe.GetName() == other.GetName()
 }
 
-func (pe PathElement) String() string {
+func (pe pathElement) String() string {
 	if pe.key != nil {
 		return fmt.Sprintf("{%v}", pe.key)
 	}

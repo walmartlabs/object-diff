@@ -13,9 +13,14 @@ import (
 // BUG(11xor6) Renaming of Map keys results in a deletion and addition.
 // BUG(11xor6) Lists with different orders but the same elements will generate changes.
 
+type Identifier interface {
+	CanIdentify(interface{}) (bool)
+	GetIdentity(interface{}) (interface{})
+}
+
 // Computes the change set between two objects, both objects must have the same type.
 // This returns a ChangeSet on success and an error on failure.
-func Diff(obj1 interface{}, obj2 interface{}) (*ChangeSet, error) {
+func Diff(obj1 interface{}, obj2 interface{}, identifiers ...Identifier) (*ChangeSet, error) {
 	v1 := reflect.ValueOf(obj1)
 	v2 := reflect.ValueOf(obj2)
 
@@ -24,17 +29,17 @@ func Diff(obj1 interface{}, obj2 interface{}) (*ChangeSet, error) {
 	}
 
 	changeSet := &ChangeSet{BaseType: v1.Type()}
-	return changeSet, doDiff(v1.Type(), v1, v2, changeSet, []PathElement{})
+	return changeSet, doDiff(v1.Type(), v1, v2, changeSet, []PathElement{}, identifiers)
 }
 
-func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *ChangeSet, ctx []PathElement) error {
+func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *ChangeSet, ctx []PathElement, identifiers []Identifier) error {
 
 	switch currType.Kind() {
 	case reflect.Struct:
 		for f := 0; f < currType.NumField(); f++ {
 			currField := currType.Field(f)
 			newCtx := extendContext(ctx, NewFieldElem(f, currField.Name))
-			err := doDiff(currField.Type, v1.Field(f), v2.Field(f), cs, newCtx)
+			err := doDiff(currField.Type, v1.Field(f), v2.Field(f), cs, newCtx, identifiers)
 			if err != nil {
 				return err
 			}
@@ -45,7 +50,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 			newCtx := extendContext(ctx, NewKeyElem(key))
 			if val2.IsValid() {
 				// Exists in both v1 and v2, do they match?
-				err := doDiff(currType.Elem(), v1.MapIndex(key), v2.MapIndex(key), cs, newCtx)
+				err := doDiff(currType.Elem(), v1.MapIndex(key), v2.MapIndex(key), cs, newCtx, identifiers)
 				if err != nil {
 					return err
 				}
@@ -66,7 +71,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 	case reflect.Array:
 		for i := 0; i < currType.Len(); i++ {
 			newCtx := extendContext(ctx, NewIndexElem(i))
-			err := doDiff(currType.Elem(), v1.Index(i), v2.Index(i), cs, newCtx)
+			err := doDiff(currType.Elem(), v1.Index(i), v2.Index(i), cs, newCtx, identifiers)
 			if err != nil {
 				return err
 			}
@@ -76,7 +81,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 		maxLen := intMax(v1.Len(), v2.Len())
 		for i := 0; i < minLen; i++ {
 			newCtx := extendContext(ctx, NewIndexElem(i))
-			err := doDiff(currType.Elem(), v1.Index(i), v2.Index(i), cs, newCtx)
+			err := doDiff(currType.Elem(), v1.Index(i), v2.Index(i), cs, newCtx, identifiers)
 			if err != nil {
 				return err
 			}
@@ -105,7 +110,7 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 		} else if v2.IsNil() {
 			cs.AddPathDeletion(newCtx, v1.Elem())
 		} else {
-			err := doDiff(currType.Elem(), v1.Elem(), v2.Elem(), cs, newCtx)
+			err := doDiff(currType.Elem(), v1.Elem(), v2.Elem(), cs, newCtx, identifiers)
 			if err != nil {
 				return err
 			}

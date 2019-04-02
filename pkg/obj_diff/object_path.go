@@ -31,7 +31,7 @@ type ObjectPathConfig struct {
 func NewObjectPathWithConfig(root reflect.Value, path []PathElement, config ObjectPathConfig) *ObjectPath {
 	objectPath := &ObjectPath{Value: root, lastVals: []reflect.Value{}, index: -1, Path: path, config: config}
 	// We need to run this here because the first call to Next() will operate on the second value.
-	objectPath.nextConfigOptions()
+	objectPath.nextConfigOptions(true)
 	return objectPath
 }
 
@@ -69,12 +69,13 @@ func (op *ObjectPath) Next() (hasNext bool) {
 		panic(NewPatchError("unhandled path kind '%v'\n", op.Kind()))
 	}
 	op.index++
-	op.nextConfigOptions()
-	return op.index+1 < len(op.Path)
+	hasNext = op.index+1 < len(op.Path)
+	op.nextConfigOptions(hasNext)
+	return hasNext
 }
 
 // Apply optional config items after advancement.
-func (op ObjectPath) nextConfigOptions() {
+func (op ObjectPath) nextConfigOptions(hasNext bool) {
 	switch op.Kind() {
 	case reflect.Struct:
 
@@ -91,7 +92,7 @@ func (op ObjectPath) nextConfigOptions() {
 		if op.config.CreateMissingObjects {
 			op.CreateIfMissing()
 		}
-		if op.config.CreateMissingValues && op.NeedsAppend() {
+		if op.config.CreateMissingValues && hasNext && op.NeedsAppend() {
 			op.AppendNew(op.Type().Elem())
 		}
 	case reflect.Ptr:

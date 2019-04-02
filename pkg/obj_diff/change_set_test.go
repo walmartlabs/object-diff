@@ -27,7 +27,7 @@ type Obj struct {
 	NestedPtr1 *NestObj
 	NestedPtr2 *NestObj
 	NestedPtr3 *NestObj
-	MapOfMaps map[string]map[string]NestObj
+	MapOfMaps  map[string]map[string]NestObj
 }
 
 func TestDiffThenPatch(t *testing.T) {
@@ -40,12 +40,12 @@ func TestDiffThenPatch(t *testing.T) {
 		[]int64{1, 2}, [3]bool{true, false, true},
 		map[string]int64{"a": 1, "b": 2, "d": 4},
 		NestObj{3, "Hello"}, &nest1, nil, &nest2,
-		map[string]map[string]NestObj{"a": {"b": nest1}, "c":{"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest1}, "c": {"d": nest2}}}
 	o2 := Obj{2, &five, 3.14, "Bar", true,
 		[]int64{3, 4, 5}, [3]bool{true, true, false},
 		map[string]int64{"a": 2, "c": 3, "d": 4},
 		NestObj{7, "World"}, &nest2, &nest1, nil,
-		map[string]map[string]NestObj{"a": {"b": nest3}, "c":{"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest3}, "c": {"d": nest2}}}
 
 	diff, err := Diff(o1, o2)
 	if err != nil {
@@ -81,12 +81,12 @@ func TestDiffPointersThenPatch(t *testing.T) {
 		[]int64{1, 2}, [3]bool{true, false, true},
 		map[string]int64{"a": 1, "b": 2, "d": 4},
 		NestObj{3, "Hello"}, &nest1, nil, &nest2,
-		map[string]map[string]NestObj{"a": {"b": nest1}, "c":{"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest1}, "c": {"d": nest2}}}
 	o2 := Obj{2, &five, 3.14, "Bar", true,
 		[]int64{3, 4, 5}, [3]bool{true, true, false},
 		map[string]int64{"a": 2, "c": 3, "d": 4},
 		NestObj{7, "World"}, &nest2, &nest1, nil,
-		map[string]map[string]NestObj{"a": {"b": nest3}, "c":{"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest3}, "c": {"d": nest2}}}
 
 	diff, err := Diff(&o1, &o2)
 	if err != nil {
@@ -110,4 +110,45 @@ func TestDiffPointersThenPatch(t *testing.T) {
 		t.Fatalf("Error in Patch: %v", err)
 	}
 
+}
+
+func TestAddByteArrayToMap(t *testing.T) {
+	m1 := map[string][]byte{}
+	m2 := map[string][]byte{
+		"foo": []byte("test"),
+	}
+
+	diff, err := Diff(&m1, &m2)
+	if err != nil {
+		t.Fatalf("Error in Diff: %v", err)
+	}
+
+	fmt.Printf("%v+\n", diff)
+
+	t.Logf("BaseType: %v", diff.BaseType)
+	t.Logf("Changes:")
+	for _, change := range diff.Changes {
+		t.Logf("%+v", change)
+	}
+
+	m3 := map[string][]byte{
+		"foo": []byte("test"),
+	}
+
+	err = diff.Patch(&m3)
+	t.Logf("Original: %+v", m1)
+	t.Logf("Expected: %+v", m2)
+	t.Logf("Applied: %+v", m3)
+	if err != nil {
+		t.Fatalf("Error in Patch: %v", err)
+	}
+
+	m4 := map[string][]byte{}
+	err = diff.Patch(&m4)
+	t.Logf("Original: %+v", m1)
+	t.Logf("Expected: %+v", m2)
+	t.Logf("Applied: %+v", m4)
+	if err != nil {
+		t.Fatalf("Error in Patch: %v", err)
+	}
 }

@@ -27,7 +27,24 @@ func Diff(obj1 interface{}, obj2 interface{}) (*ChangeSet, error) {
 	return changeSet, doDiff(v1.Type(), v1, v2, changeSet, []PathElement{})
 }
 
+type interfaceError struct {}
+
+var _ error = interfaceError{}
+
+func (interfaceError) Error() string {
+	return "can not call interface() on reflect.Value"
+}
+
+func isInterfaceError(err error) bool {
+	_, ok := err.(interfaceError)
+	return ok
+}
+
+
 func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *ChangeSet, ctx []PathElement) error {
+	if !(v1.CanInterface() && v2.CanInterface()) {
+		return interfaceError{}
+	}
 
 	switch currType.Kind() {
 	case reflect.Struct:
@@ -36,7 +53,12 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 			newCtx := extendContext(ctx, NewFieldElem(f, currField.Name))
 			err := doDiff(currField.Type, v1.Field(f), v2.Field(f), cs, newCtx)
 			if err != nil {
-				return err
+				if isInterfaceError(err) {
+					cs.AddPathChange(ctx, v1, v2)
+					break // We break because all fields of this obj are not Interface-able.
+				} else {
+					return err
+				}
 			}
 		}
 	case reflect.Map:
@@ -47,7 +69,12 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 				// Exists in both v1 and v2, do they match?
 				err := doDiff(currType.Elem(), v1.MapIndex(key), v2.MapIndex(key), cs, newCtx)
 				if err != nil {
-					return err
+					if isInterfaceError(err) {
+						cs.AddPathChange(ctx, v1, v2)
+						break // We break because all values of this obj are not interface-able.
+					} else {
+						return err
+					}
 				}
 			} else {
 				// Exists in v1 and not in v2.
@@ -68,7 +95,12 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 			newCtx := extendContext(ctx, NewIndexElem(i))
 			err := doDiff(currType.Elem(), v1.Index(i), v2.Index(i), cs, newCtx)
 			if err != nil {
-				return err
+				if isInterfaceError(err) {
+					cs.AddPathChange(ctx, v1, v2)
+					break // We break because all elements of this obj are not interface-able.
+				} else {
+					return err
+				}
 			}
 		}
 	case reflect.Slice:
@@ -78,7 +110,12 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 			newCtx := extendContext(ctx, NewIndexElem(i))
 			err := doDiff(currType.Elem(), v1.Index(i), v2.Index(i), cs, newCtx)
 			if err != nil {
-				return err
+				if isInterfaceError(err) {
+					cs.AddPathChange(ctx, v1, v2)
+					break // We break because all elements of this obj are not Interface-able.
+				} else {
+					return err
+				}
 			}
 		}
 
@@ -107,7 +144,11 @@ func doDiff(currType reflect.Type, v1 reflect.Value, v2 reflect.Value, cs *Chang
 		} else {
 			err := doDiff(currType.Elem(), v1.Elem(), v2.Elem(), cs, newCtx)
 			if err != nil {
-				return err
+				if isInterfaceError(err) {
+					cs.AddPathChange(ctx, v1, v2)
+				} else {
+					return err
+				}
 			}
 		}
 	default:

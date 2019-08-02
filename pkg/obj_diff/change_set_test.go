@@ -6,6 +6,7 @@ package obj_diff
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 )
 
@@ -28,6 +29,7 @@ type Obj struct {
 	NestedPtr2 *NestObj
 	NestedPtr3 *NestObj
 	MapOfMaps  map[string]map[string]NestObj
+	Quantity   resource.Quantity
 }
 
 func TestDiffThenPatch(t *testing.T) {
@@ -40,12 +42,12 @@ func TestDiffThenPatch(t *testing.T) {
 		[]int64{1, 2}, [3]bool{true, false, true},
 		map[string]int64{"a": 1, "b": 2, "d": 4},
 		NestObj{3, "Hello"}, &nest1, nil, &nest2,
-		map[string]map[string]NestObj{"a": {"b": nest1}, "c": {"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest1}, "c": {"d": nest2}}, resource.MustParse("500Mi")}
 	o2 := Obj{2, &five, 3.14, "Bar", true,
 		[]int64{3, 4, 5}, [3]bool{true, true, false},
 		map[string]int64{"a": 2, "c": 3, "d": 4},
 		NestObj{7, "World"}, &nest2, &nest1, nil,
-		map[string]map[string]NestObj{"a": {"b": nest3}, "c": {"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest3}, "c": {"d": nest2}}, resource.MustParse("1.5Gi")}
 
 	diff, err := Diff(o1, o2)
 	if err != nil {
@@ -81,12 +83,12 @@ func TestDiffPointersThenPatch(t *testing.T) {
 		[]int64{1, 2}, [3]bool{true, false, true},
 		map[string]int64{"a": 1, "b": 2, "d": 4},
 		NestObj{3, "Hello"}, &nest1, nil, &nest2,
-		map[string]map[string]NestObj{"a": {"b": nest1}, "c": {"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest1}, "c": {"d": nest2}}, resource.MustParse("1.5Gi")}
 	o2 := Obj{2, &five, 3.14, "Bar", true,
 		[]int64{3, 4, 5}, [3]bool{true, true, false},
 		map[string]int64{"a": 2, "c": 3, "d": 4},
 		NestObj{7, "World"}, &nest2, &nest1, nil,
-		map[string]map[string]NestObj{"a": {"b": nest3}, "c": {"d": nest2}}}
+		map[string]map[string]NestObj{"a": {"b": nest3}, "c": {"d": nest2}}, resource.MustParse("500Mi")}
 
 	diff, err := Diff(&o1, &o2)
 	if err != nil {

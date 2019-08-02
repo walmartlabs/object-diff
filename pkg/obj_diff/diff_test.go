@@ -7,6 +7,7 @@ package obj_diff
 import (
 	"fmt"
 	. "github.com/walmartlabs/object-diff/pkg/obj_diff/helpers"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"testing"
 )
@@ -21,6 +22,8 @@ type diffTestObject struct {
 func TestDiff(t *testing.T) {
 	int1 := int32(123)
 	int2 := int32(456)
+	quantity1 := resource.MustParse("500Mi")
+	quantity2 := resource.MustParse("1.5Gi")
 	i := []diffTestObject{
 		buildSimpleTest("Basic -- Int", int(-123), int(123), []PathElement{}, int(-123), int(123)),
 		buildSimpleTest("Basic -- Uint", uint(123), uint(456), []PathElement{}, uint(123), uint(456)),
@@ -34,6 +37,9 @@ func TestDiff(t *testing.T) {
 		buildSimpleTest("Object -- Array", [1]int32{int1}, [1]int32{int2}, []PathElement{NewIndexElem(0)}, int1, int2),
 		buildSimpleTest("Object -- Slice", []int32{int1}, []int32{int2}, []PathElement{NewIndexElem(0)}, int1, int2),
 		buildSimpleTest("Object -- Ptr", &int1, &int2, []PathElement{NewPtrElem()}, int1, int2),
+
+		buildSimpleTest("Object -- resource.Quantity 1", &quantity1, &quantity2, []PathElement{NewPtrElem()}, quantity1, quantity2),
+		buildSimpleTest("Object -- resource.Quantity 2", &quantity2, &quantity1, []PathElement{NewPtrElem()}, quantity2, quantity1),
 	}
 
 	tests := i

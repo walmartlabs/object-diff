@@ -265,3 +265,16 @@ type PatchError struct {
 func (err PatchError) Error() string {
 	return err.errStr
 }
+
+type InterfaceError struct {}
+
+var _ error = InterfaceError{}
+
+func (InterfaceError) Error() string {
+	return "can not call interface() on reflect.Value"
+}
+
+func IsInterfaceError(err error) bool {
+	_, ok := err.(InterfaceError)
+	return ok
+}

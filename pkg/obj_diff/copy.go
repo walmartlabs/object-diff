@@ -23,7 +23,13 @@ func CopyReflectValue(oldVal reflect.Value) (newVal reflect.Value) {
 		newVal = reflect.New(newType).Elem()
 		// 	newVal = reflect.Zero(newType)
 		for f := 0; f < newType.NumField(); f++ {
-			newVal.Field(f).Set(CopyReflectValue(oldVal.Field(f)))
+			oldField := oldVal.Field(f)
+			if !oldField.CanInterface() {
+				// We set and break because all elements of this obj are not interface-able.
+				newVal.Set(oldVal)
+				break
+			}
+			newVal.Field(f).Set(CopyReflectValue(oldField))
 		}
 
 	case reflect.Map:

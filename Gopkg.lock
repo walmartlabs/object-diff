@@ -111,17 +111,6 @@
   version = "0.9.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:76c72ade7e12b76dcab999c6d4f0e06b738a39eeed3eb501800605b7b13c8087"
-  name = "github.com/walmartlabs/object-diff"
-  packages = [
-    "pkg/obj_diff",
-    "pkg/obj_diff/helpers",
-  ]
-  pruneopts = "UT"
-  revision = "96f9e27ca5a1dc28a395e8b4d816f3d1a8b8e7f9"
-
-[[projects]]
   digest = "1:3f3a05ae0b95893d90b9b3b5afdb79a9b3d96e4e36e099d841ae602e4aca0da8"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]

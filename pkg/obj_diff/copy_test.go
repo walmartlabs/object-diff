@@ -5,6 +5,7 @@
 package obj_diff
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"testing"
 )
@@ -14,6 +15,7 @@ type simpleStruct struct {
 	B float64
 	C string
 	D bool
+	E resource.Quantity
 }
 
 type complexStruct struct {
@@ -26,14 +28,13 @@ type complexStruct struct {
 }
 
 func TestCopyValueReflectively(t *testing.T) {
-	ts1 := simpleStruct{123, 3.14, "ABC", true}
-	ts2 := simpleStruct{456, 2.71, "DEF", false}
-	ts3 := simpleStruct{042, 0.01, "XXX", false}
+	ts1 := simpleStruct{123, 3.14, "ABC", true, resource.MustParse("500Mi")}
+	ts2 := simpleStruct{456, 2.71, "DEF", false, resource.MustParse("1.5Gi")}
+	ts3 := simpleStruct{042, 0.01, "XXX", false, resource.MustParse("3Ti")}
 	map1 := map[string]int32{"a": 1, "b": 2, "c": 3}
 	slice1 := []float32{3.14, 2.71, 0.01}
 	array1 := [3]string{"ABC", "DEF", "XXX"}
 	ptr1 := &ts1
-
 
 	int1 := int32(1)
 	structInt := structInt32{A: 1}
@@ -55,13 +56,13 @@ func TestCopyValueReflectively(t *testing.T) {
 	mapPtr1 := map[string]*int32{"A": ptrInt1}
 
 	arrayStruct1 := [3]structInt32{structInt, structInt, structInt}
-	arrayMap1 :=[3]map[string]int32{mapInt, mapInt, mapInt}
+	arrayMap1 := [3]map[string]int32{mapInt, mapInt, mapInt}
 	arrayArray1 := [3][3]int32{arrayInt, arrayInt, arrayInt}
 	arraySlice1 := [3][]int32{sliceInt, sliceInt, sliceInt}
 	arrayPtr1 := [3]*int32{ptrInt1, ptrInt1, ptrInt1}
 
 	sliceStruct1 := []structInt32{structInt, structInt, structInt}
-	sliceMap1 :=[]map[string]int32{mapInt, mapInt, mapInt}
+	sliceMap1 := []map[string]int32{mapInt, mapInt, mapInt}
 	sliceArray1 := [][3]int32{arrayInt, arrayInt, arrayInt}
 	sliceSlice1 := [][]int32{sliceInt, sliceInt, sliceInt}
 	slicePtr1 := []*int32{ptrInt1, ptrInt1, ptrInt1}
@@ -141,10 +142,12 @@ func TestCopyValueReflectively(t *testing.T) {
 		{name: "Pairs -- Ptr, Slice", object: ptrSlice1},
 		{name: "Pairs -- Ptr, Ptr", object: ptrPtr1},
 
+		{name: "Quantity -- 500Mi", object: resource.MustParse("500Mi")},
+		{name: "Quantity -- 1.5Gi", object: resource.MustParse("1.5Gi")},
+
 		{name: "Complex -- 1 Level", object: complex1},
 		{name: "Complex -- 2 Levels", object: complex2},
 		{name: "Complex -- 3 Levels", object: &complex3},
-
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -177,7 +180,7 @@ func TestTypeAlias(t *testing.T) {
 		t.Fail()
 	}
 
-	expect2 := aliasType2{123, 3.14, "ABC", true}
+	expect2 := aliasType2{123, 3.14, "ABC", true, resource.MustParse("1.5Gi")}
 	actual2, ok := CopyValueReflectively(expect2).(aliasType2)
 	if !ok {
 		t.Fatal("Could not convert object alias type!")
